@@ -11,6 +11,18 @@ export type Place = {
 // Konum alınamazsa gösterilecek varsayılan şehir
 const DEFAULT_PLACE: Place = { name: 'İstanbul', latitude: 41.0138, longitude: 28.9497 };
 
+// Konum bu sürede alınamazsa beklemeyi bırakıp varsayılan şehre döneriz
+const LOCATION_TIMEOUT_MS = 10000;
+
+// Bir işlemi en fazla "ms" kadar bekler; süre dolarsa hata fırlatır
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Zaman aşımı')), ms)
+  );
+  // Promise.race: hangisi önce biterse onun sonucu kullanılır
+  return Promise.race([promise, timeout]);
+}
+
 // Kullanıcının konumunu bulur. İzin verilmezse veya konum alınamazsa İstanbul'a döner.
 export function useLocation() {
   const [place, setPlace] = useState<Place | null>(null);
@@ -32,17 +44,21 @@ export function useLocation() {
           return;
         }
 
-        // 2) Önce son bilinen konumu dene (hızlı), yoksa güncel konumu al
+        // 2) Önce son 10 dakika içinde kaydedilmiş konumu dene (hızlı), yoksa güncel konumu al.
+        // Hava durumu için şehir düzeyinde konum yeterli olduğundan düşük hassasiyet istiyoruz.
         const position =
-          (await Location.getLastKnownPositionAsync()) ??
-          (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
+          (await Location.getLastKnownPositionAsync({ maxAge: 10 * 60 * 1000 })) ??
+          (await withTimeout(
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }),
+            LOCATION_TIMEOUT_MS
+          ));
         const { latitude, longitude } = position.coords;
 
         // 3) Koordinattan yer adını bul (bulunamazsa "Konumum" yaz)
         let name = 'Konumum';
         try {
           const [address] = await Location.reverseGeocodeAsync({ latitude, longitude });
-          name = address?.district ?? address?.city ?? address?.subregion ?? address?.region ?? name;
+          name = address?.city ?? address?.subregion ?? address?.district ?? address?.region ?? name;
         } catch {
           // Yer adı bulunamadıysa sorun değil, hava durumu yine gösterilir
         }

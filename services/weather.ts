@@ -46,6 +46,11 @@ export async function getWeather(latitude: number, longitude: number): Promise<W
 
   const data = await fetchJson<ForecastResponse>(url);
 
+  // Beklenen alanlar gelmediyse ekran çökmesin diye anlaşılır bir hata ver
+  if (!data.current || !data.hourly?.time?.length || !data.daily?.time?.length) {
+    throw new Error('Hava durumu verisi eksik geldi. Lütfen daha sonra tekrar deneyin.');
+  }
+
   // Saatlik veri günün 00:00'ından başlar. Biz şu anki saatten itibaren 24 saati istiyoruz.
   // "2026-11-10T14:15" -> "2026-11-10T14" (saat kısmına kadar) ile başlayan ilk kaydı bul.
   const currentHour = data.current.time.slice(0, 13);
@@ -107,10 +112,12 @@ export async function getCurrentSummaries(cities: City[]): Promise<Record<number
   // Cevaplar gönderdiğimiz şehirlerle aynı sırada gelir
   const result: Record<number, CurrentSummary> = {};
   cities.forEach((city, i) => {
+    const current = list[i]?.current;
+    if (!current) return; // Bu şehrin verisi gelmediyse atla (ekranda "--" görünür)
     result[city.id] = {
-      temperature: list[i].current.temperature_2m,
-      weatherCode: list[i].current.weather_code,
-      isDay: list[i].current.is_day === 1,
+      temperature: current.temperature_2m,
+      weatherCode: current.weather_code,
+      isDay: current.is_day === 1,
     };
   });
   return result;

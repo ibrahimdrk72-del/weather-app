@@ -189,7 +189,7 @@ weather-app/
 
 **`components/DailyForecast.tsx`** — Her günün yanında bir **sıcaklık aralığı çubuğu** çizer. Önce haftanın en düşük (`weekMin`) ve en yüksek (`weekMax`) sıcaklığını bulur; her günün çubuğunun başlangıcı ve genişliği bu aralığa göre **yüzde** olarak hesaplanır. Böylece sıcak günlerin çubuğu sağda, soğuk günlerinki solda durur.
 
-**`services/http.ts`** — `fetchJson(url)`: `AbortController` ile 10 saniyelik zaman aşımı uygular; internet yoksa, süre dolarsa veya sunucu hata kodu dönerse anlaşılır Türkçe bir `Error` fırlatır.
+**`services/http.ts`** — `fetchJson(url)`: `AbortController` ile 10 saniyelik zaman aşımı uygular; internet yoksa, süre dolarsa, sunucu hata kodu dönerse veya cevap bozuksa anlaşılır Türkçe bir `Error` fırlatır.
 
 **`utils/weatherCodes.ts`** — Tek bir tablo (`WEATHER_CODES`): her WMO kodu için Türkçe açıklama, gündüz ikonu ve gece ikonu. İki fonksiyon dışarı açılır: `getWeatherDescription(kod)` ve `getWeatherIcon(kod, gündüzMü)`.
 
@@ -357,7 +357,7 @@ Birden fazla konum gönderilince cevap bir **dizi** olur (gönderdiğimiz sıray
 2. **`HomeScreen` ilk kez çizilir.** `useLocation()` hook'u çağrılır. Başlangıçta `loading = true` olduğu için ekranda "Konumunuz alınıyor..." (`LoadingView`) görünür.
 3. **`useLocation` içindeki `useEffect` çalışır** (ekran ilk çizildikten sonra, bir kez). `Location.requestForegroundPermissionsAsync()` çağrılır → telefonda izin penceresi çıkar.
 4. **Kullanıcı cevap verir.**
-   - *İzin verildi:* `getLastKnownPositionAsync()` (hızlı) denenir, sonuç yoksa `getCurrentPositionAsync()` ile konum alınır. Sonra `reverseGeocodeAsync()` ile koordinat yer adına çevrilir (örn. "Kadıköy").
+   - *İzin verildi:* Önce son 10 dakika içinde kaydedilmiş konum denenir (`getLastKnownPositionAsync`, hızlıdır); yoksa `getCurrentPositionAsync()` ile güncel konum alınır. Bu adım en fazla 10 saniye beklenir (`withTimeout`); süre dolarsa İstanbul'a dönülür. Sonra `reverseGeocodeAsync()` ile koordinat yer adına çevrilir (örn. "Kadıköy").
    - *İzin verilmedi:* Yer olarak İstanbul seçilir ve bir bilgi mesajı hazırlanır.
 5. **`setPlace(...)` ve `setLoading(false)` çağrılır.** State değiştiği için React `HomeScreen`'i yeniden çizer. Artık `place` dolu olduğundan `<WeatherView latitude=... longitude=...>` gösterilir.
 6. **`WeatherView` içinde `useWeather(latitude, longitude)` çalışır.** `loading = true` → "Hava durumu yükleniyor..." görünür. `useEffect` içinden `load()` → `getWeather()` çağrılır.
@@ -393,7 +393,7 @@ const { status } = await Location.requestForegroundPermissionsAsync();
 - Ekranın üstünde sarı kutuda nazik bir mesaj çıkar: *"Konum izni verilmediği için İstanbul gösteriliyor. Dilerseniz telefonunuzun ayarlarından konum iznini açabilirsiniz."*
 - Uygulama çökmez, hata ekranı göstermez; normal şekilde çalışmaya devam eder. Kullanıcı arama ile istediği şehre bakabilir.
 
-**Konum alınamazsa** (izin var ama GPS kapalı vb.): `try/catch` hatayı yakalar, yine İstanbul gösterilir ve "Konumunuz alınamadığı için İstanbul gösteriliyor." mesajı çıkar.
+**Konum alınamazsa** (izin var ama konum servisi kapalı, ya da 10 saniyede konum bulunamadı): `try/catch` hatayı yakalar, yine İstanbul gösterilir ve "Konumunuz alınamadığı için İstanbul gösteriliyor." mesajı çıkar.
 
 ---
 
@@ -589,7 +589,7 @@ Open-Meteo'dan (`api.open-meteo.com/v1/forecast`). Ücretsizdir ve API anahtarı
 `fetch` hata fırlatır. `services/http.ts` bunu yakalayıp "İnternet bağlantısı kurulamadı..." mesajına çevirir. Hook bu mesajı `error` state'ine yazar, ekran `ErrorView` ile mesajı ve "Tekrar dene" butonunu gösterir. Uygulama çökmez. Favoriler ekranında şehir listesi yine görünür (veritabanından gelir), sadece sıcaklıklar yerine "--" yazar.
 
 **15. Timeout'u nasıl yaptın? `AbortController` nedir?**
-`AbortController` bir isteği iptal etmeye yarar. `fetchJson` içinde `setTimeout` ile 10 saniyelik zamanlayıcı kuruyorum; süre dolarsa `controller.abort()` çağrılır ve `fetch` "AbortError" ile durur. Bunu "İstek zaman aşımına uğradı" mesajına çeviriyorum. İstek zamanında biterse `finally` içinde `clearTimeout` ile zamanlayıcı temizlenir.
+`AbortController` bir isteği iptal etmeye yarar. `fetchJson` içinde `setTimeout` ile 10 saniyelik zamanlayıcı kuruyorum; süre dolarsa `controller.abort()` çağrılır ve `fetch` hata fırlatarak durur. `catch` içinde `controller.signal.aborted` ile iptali bizim yaptığımızı anlayıp "İstek zaman aşımına uğradı" mesajına çeviriyorum. İstek zamanında biterse `finally` içinde `clearTimeout` ile zamanlayıcı temizlenir.
 
 **16. Debounce nedir, neden kullandın?**
 Kullanıcı "izmir" yazarken her harfte istek atmak (5 istek) gereksizdir. Debounce, kullanıcı yazmayı 400 ms bıraktıktan sonra tek istek atılmasını sağlar. `useDebounce` hook'u her değişiklikte bir zamanlayıcı kurar; değer süre dolmadan tekrar değişirse eski zamanlayıcıyı iptal eder (`clearTimeout`).
@@ -680,7 +680,16 @@ API `is_day` alanını gönderiyor (1 = gündüz, 0 = gece). Servis bunu `isDay:
 **42. "Son güncelleme" saati nereden geliyor?**
 `useWeather` hook'u veri başarıyla geldiğinde `setUpdatedAt(new Date())` yapıyor. `WeatherView` bunu `formatClock` ile "14:05" biçiminde gösteriyor. Aşağı çekip yenileyince saat güncellenir.
 
-**43. Uygulamayı Android'de de çalıştırabilir misin?**
+**43. Konum çok geç gelirse veya hiç gelmezse uygulama takılı mı kalır?**
+Hayır. `useLocation` içinde `withTimeout` yardımcı fonksiyonu `Promise.race` kullanır: konum isteği ile 10 saniyelik bir zamanlayıcı yarışır. Zamanlayıcı önce biterse hata fırlatılır, `catch` bloğu İstanbul'u gösterir.
+
+**44. API beklenmedik veya eksik bir cevap dönerse ne olur?**
+`getWeather` gelen cevapta `current`, `hourly` ve `daily` alanlarını kontrol eder; eksikse "Hava durumu verisi eksik geldi" hatası fırlatır ve ekranda `ErrorView` görünür. Cevap geçerli JSON değilse `fetchJson` bunu "Sunucudan gelen cevap okunamadı" mesajına çevirir. İki durumda da uygulama çökmez.
+
+**45. Arama ekranındaki bilgi mesajları neden ekranın ortasında değil de üstte?**
+Arama ekranında klavye açıktır ve ekranın alt yarısını kaplar. Mesajı tam ortaya koysaydım klavyenin arkasında kalırdı; bu yüzden arama kutusunun hemen altında sabit yükseklikte bir alanda gösteriyorum.
+
+**46. Uygulamayı Android'de de çalıştırabilir misin?**
 Evet. Kod platforma özel bir şey içermiyor; Android'de Expo Go ile aynı QR kod okutularak açılır. Android konum izinleri `app.json`'da tanımlı.
 
 ---

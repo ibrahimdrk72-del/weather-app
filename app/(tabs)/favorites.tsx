@@ -98,6 +98,7 @@ export default function FavoritesScreen() {
               load();
             }}
             tintColor="#0284c7"
+            colors={['#0284c7']}
           />
         }
         // Sıcaklıklar alınamadıysa listenin üstünde hata kutusu ve "Tekrar dene"
@@ -105,7 +106,12 @@ export default function FavoritesScreen() {
           weatherError ? (
             <View className="mb-4 rounded-2xl bg-amber-100 p-3">
               <Text className="text-sm text-amber-800">Sıcaklıklar alınamadı. {weatherError}</Text>
-              <Pressable onPress={load} className="mt-2 self-start active:opacity-70">
+              <Pressable
+                onPress={load}
+                hitSlop={10}
+                accessibilityRole="button"
+                className="mt-2 self-start active:opacity-70"
+              >
                 <Text className="text-sm font-bold text-amber-900">Tekrar dene</Text>
               </Pressable>
             </View>
@@ -116,6 +122,7 @@ export default function FavoritesScreen() {
           return (
             <Pressable
               onPress={() => openCity(item)}
+              accessibilityRole="button"
               className="mb-3 flex-row items-center rounded-2xl bg-white p-4 active:opacity-70"
             >
               <View className="flex-1">
@@ -145,6 +152,7 @@ export default function FavoritesScreen() {
               <Pressable
                 onPress={() => handleRemove(item)}
                 hitSlop={10}
+                accessibilityRole="button"
                 accessibilityLabel={`${item.name} şehrini favorilerden çıkar`}
                 className="ml-3"
               >

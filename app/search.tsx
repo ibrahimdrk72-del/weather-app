@@ -65,8 +65,9 @@ export default function SearchScreen() {
     openCity(city);
   }
 
-  // Duruma göre arama kutusunun altında ne gösterileceğini seç
-  function renderContent() {
+  // Liste dışındaki durumlar (bilgi, yükleniyor, hata) sabit yükseklikte bir alanda gösterilir.
+  // Ekranın tam ortasına koysaydık açık klavyenin arkasında kalırlardı.
+  function renderStatus() {
     if (query.trim().length < MIN_LENGTH) {
       return (
         <EmptyView
@@ -92,14 +93,25 @@ export default function SearchScreen() {
         />
       );
     }
+    return null; // Gösterilecek sonuç var
+  }
+
+  // Duruma göre arama kutusunun altında ne gösterileceğini seç
+  function renderContent() {
+    const status = renderStatus();
+    if (status) {
+      return <View className="h-60">{status}</View>;
+    }
     return (
       <FlatList
         data={results}
         keyExtractor={(item) => String(item.id)}
         keyboardShouldPersistTaps="handled" // Klavye açıkken de ilk dokunuş şehri seçsin
+        keyboardDismissMode="on-drag" // Liste kaydırılınca klavye kapansın
         renderItem={({ item }) => (
           <Pressable
             onPress={() => selectCity(item)}
+            accessibilityRole="button"
             className="flex-row items-center border-b border-slate-100 px-4 py-3 active:bg-sky-50"
           >
             <MaterialCommunityIcons name="map-marker-outline" size={22} color="#0284c7" />
@@ -133,7 +145,12 @@ export default function SearchScreen() {
           className="ml-2 flex-1 py-3 text-base text-slate-800"
         />
         {query.length > 0 && (
-          <Pressable onPress={() => setQuery('')} accessibilityLabel="Aramayı temizle">
+          <Pressable
+            onPress={() => setQuery('')}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Aramayı temizle"
+          >
             <MaterialCommunityIcons name="close-circle" size={20} color="#94a3b8" />
           </Pressable>
         )}

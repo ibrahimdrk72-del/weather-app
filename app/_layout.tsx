@@ -8,7 +8,13 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerBackTitle: 'Geri', headerTintColor: '#0284c7' }}>
+      <Stack
+        screenOptions={{
+          headerBackTitle: 'Geri',
+          headerTintColor: '#0284c7', // Geri butonunun rengi
+          headerTitleStyle: { color: '#1e293b' }, // Başlık yazısı koyu kalsın
+        }}
+      >
         {/* Alt tab bar'lı ana bölüm; kendi başlığını çizdiği için Stack başlığı gizli */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* Arama ekranı alttan açılan modal olarak gösterilir */}

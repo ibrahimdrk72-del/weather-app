@@ -11,7 +11,7 @@ export async function fetchJson<T>(url: string): Promise<T> {
   try {
     const response = await fetch(url, { signal: controller.signal });
 
-    // Sunucu cevap verdi ama hata kodu döndü (örn. 400, 500)
+    // Sunucu cevap verdi ama hata kodu döndü (örn. 400, 429, 500)
     if (!response.ok) {
       throw new Error('Sunucudan beklenmeyen bir cevap geldi. Lütfen daha sonra tekrar deneyin.');
     }
@@ -19,12 +19,16 @@ export async function fetchJson<T>(url: string): Promise<T> {
     return (await response.json()) as T;
   } catch (error) {
     // Süre doldu ve isteği biz iptal ettik
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (controller.signal.aborted) {
       throw new Error('İstek zaman aşımına uğradı. Bağlantınızı kontrol edip tekrar deneyin.');
     }
     // İnternet yoksa fetch "TypeError" fırlatır
     if (error instanceof TypeError) {
       throw new Error('İnternet bağlantısı kurulamadı. Bağlantınızı kontrol edip tekrar deneyin.');
+    }
+    // Cevap geçerli bir JSON değilse response.json() "SyntaxError" fırlatır
+    if (error instanceof SyntaxError) {
+      throw new Error('Sunucudan gelen cevap okunamadı. Lütfen daha sonra tekrar deneyin.');
     }
     throw error;
   } finally {

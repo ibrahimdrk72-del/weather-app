@@ -25,6 +25,7 @@ export default function HomeScreen() {
         </View>
         <Pressable
           onPress={() => router.push('/search')}
+          accessibilityRole="button"
           accessibilityLabel="Şehir ara"
           className="rounded-full bg-white p-2 active:opacity-70"
         >

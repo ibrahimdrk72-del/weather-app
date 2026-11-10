@@ -39,7 +39,15 @@ export default function WeatherView({ latitude, longitude, children }: Props) {
       contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
       showsVerticalScrollIndicator={false}
       // Aşağı çekerek yenileme
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#0284c7" />}
+      refreshControl={
+        // tintColor iOS'ta, colors Android'de göstergenin rengini belirler
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={refresh}
+          tintColor="#0284c7"
+          colors={['#0284c7']}
+        />
+      }
     >
       {children}
       {/* Yenileme başarısız olduysa eski veri ekranda kalır, üstte hata mesajı çıkar */}

@@ -73,6 +73,7 @@ export default function CityScreen() {
             <Pressable
               onPress={toggleFavorite}
               hitSlop={10}
+              accessibilityRole="button"
               accessibilityLabel={favorite ? 'Favorilerden çıkar' : 'Favorilere ekle'}
             >
               <MaterialCommunityIcons
