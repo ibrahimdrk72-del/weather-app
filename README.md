@@ -1,134 +1,37 @@
 # Hava Durumu
 
-Mobil Programlama dersi vize projesi. Expo (React Native) ile yazılmış bir hava durumu uygulaması.
+Expo SDK 58 ile geliştirilen Türkçe hava durumu uygulaması. Tahmin ve şehir arama verileri [Open-Meteo](https://open-meteo.com) üzerinden gelir. API anahtarı gerekmez.
 
-Kullanıcı bulunduğu konumun veya aradığı şehrin hava durumunu görür, sevdiği şehirleri favorilere kaydeder.
+- Konum alınamazsa İstanbul gösterilir. Ana ekrandan konumu tekrar deneyebilirsiniz.
+- Gündüz ve gece kartları, 24 saatlik sıcaklık grafiği, ayrıntıları açılabilen 7 günlük tahmin ve hava koşullarına göre öneriler bulunur.
+- Sistem, açık veya koyu tema ile °C/°F seçimi cihazda saklanır. Animasyonlar sistemin hareketi azaltma tercihini izler.
+- Favoriler Android ve iOS’ta SQLite, web’de localStorage ile saklanır. Ağ isteği başarısız olduğunda, son 24 saat içinde alınmış bir tahmin varsa kayıt zamanı ve eski veri uyarısı gösterilir.
+- Mobilde sistem paylaşım menüsü, web’de tarayıcının Web Share desteği kullanılır.
 
-## Özellikler
+## Mac’te kurulum
 
-- Konuma göre hava durumu (izin verilmezse İstanbul gösterilir)
-- Anlık hava: sıcaklık, hissedilen sıcaklık, açıklama ve ikon, günün en yüksek / en düşük sıcaklığı
-- Ayrıntılar: nem, rüzgar hızı, gün doğumu ve gün batımı
-- Önümüzdeki 24 saatin saatlik tahmini ve yağış olasılığı (yatay kaydırılabilir)
-- 7 günlük tahmin: yağış olasılığı ve sıcaklık aralığı çubuğu
-- Gündüz açık mavi, gece koyu lacivert kart
-- Yazdıkça öneri getiren şehir arama
-- Favori şehirler (telefonda SQLite veritabanında saklanır)
-- Aşağı çekerek yenileme
-
-## Kullanılan teknolojiler
-
-| Teknoloji | Görevi |
-| --- | --- |
-| Expo SDK 54 + TypeScript | Uygulama altyapısı |
-| Expo Router | Dosya tabanlı ekran geçişleri (navigation) |
-| NativeWind 4.2.7 + Tailwind CSS v3 | Stil (className ile) |
-| expo-location | Kullanıcının konumu |
-| expo-sqlite | Favori şehirlerin saklanması |
-| @expo/vector-icons | Hava durumu ikonları |
-| Open-Meteo API | Hava durumu ve şehir arama verisi (ücretsiz, API anahtarı gerekmez) |
-
-> **Neden Expo SDK 54?** App Store'daki Expo Go uygulaması en son SDK 54'ü destekliyor
-> (SDK 55 ve sonrası App Store sürümünde yok). Uygulamanın iPhone'da Expo Go ile
-> açılabilmesi için proje bilerek SDK 54'te tutuldu. **SDK sürümünü yükseltmeyin.**
-
-## Gereksinimler (macOS)
-
-- [Node.js](https://nodejs.org) 20 veya üzeri (LTS sürümü önerilir)
-- Git
-- iPhone'da App Store'dan indirilen **Expo Go** uygulaması
-
-Node.js kurulu mu diye kontrol etmek için:
+Node.js 22.13 veya üzeri ve Git gerekir. Mevcut çalışma kopyanızdan ayrı bir klasöre klonlayın.
 
 ```bash
 node -v
+git clone --branch codex/weather-experience https://github.com/ibrahimdrk72-del/weather-app.git weather-app-experience
+cd weather-app-experience
+npm ci
+npm run start:clear
 ```
 
-## Kurulum
+iPhone’da Expo SDK 58 destekleyen Expo Go’yu açın. Mac ve iPhone aynı Wi-Fi ağındayken terminaldeki QR kodu iPhone kamerasıyla tarayın. Farklı ağlarda `npm run start:clear -- --tunnel` kullanabilirsiniz.
 
-Projeyi indir (çalışma `claude/hava-durumu-uygulamasi` dalındadır):
+Tarayıcıda çalıştırmak için `npm run web` komutunu kullanın. Web’de konum izni için localhost veya HTTPS gerekir.
 
-```bash
-git clone -b claude/hava-durumu-uygulamasi https://github.com/ibrahimdrk72-del/weather-app.git
-```
-
-Proje klasörüne gir:
+## Kontroller
 
 ```bash
-cd weather-app
-```
-
-Paketleri kur:
-
-```bash
-npm install
-```
-
-## Çalıştırma
-
-```bash
-npx expo start
-```
-
-Terminalde bir QR kod görünür.
-
-### iPhone'da Expo Go ile açma
-
-1. iPhone'a App Store'dan **Expo Go** uygulamasını kur.
-2. iPhone ve Mac **aynı Wi-Fi ağına** bağlı olsun.
-3. iPhone'un **Kamera** uygulamasını aç ve terminaldeki QR kodu okut.
-4. Çıkan "Expo Go'da aç" bildirimine dokun.
-5. Uygulama açılınca konum izni sorulur; "İzin Ver" dersen bulunduğun yerin, "İzin Verme" dersen İstanbul'un hava durumu gösterilir.
-
-### Telefon ve bilgisayar farklı ağlardaysa
-
-Okul ağı gibi cihazların birbirini görmediği ağlarda veya telefon mobil veriyle bağlıyken tünel modunu kullan:
-
-```bash
-npx expo start --tunnel
-```
-
-İlk çalıştırmada `@expo/ngrok` paketini kurmak isteyip istemediğini sorar; `y` yazıp onayla. Tünel modu biraz daha yavaştır ama telefon ile bilgisayarın aynı ağda olmasını gerektirmez.
-
-### Sorun olursa
-
-Önbelleği temizleyerek başlat:
-
-```bash
-npx expo start --clear
-```
-
-"Project is incompatible with this version of Expo Go" hatası alırsan: Expo Go'yu App Store'dan güncelle ve `package.json` içindeki `expo` sürümünün `~54` ile başladığını kontrol et.
-
-## Kontrol komutları
-
-TypeScript tip kontrolü:
-
-```bash
+npm test
 npx tsc --noEmit
-```
-
-Expo proje sağlık kontrolü:
-
-```bash
+npx expo install --check
 npx expo-doctor
+npx expo export --platform all
 ```
 
-## Klasör yapısı
-
-```
-app/          Ekranlar (Expo Router: her dosya bir ekran)
-components/   Tekrar kullanılan arayüz bileşenleri
-services/     API çağrıları (Open-Meteo)
-db/           SQLite veritabanı işlemleri
-hooks/        Özel hook'lar (konum, hava durumu, debounce)
-types/        TypeScript tipleri
-utils/        Yardımcı fonksiyonlar (hava durumu kodları, tarih, biçimlendirme)
-```
-
-Projenin ayrıntılı anlatımı, veri akışı ve olası sınav soruları için: [PROJE_ACIKLAMASI.md](./PROJE_ACIKLAMASI.md)
-
-## Notlar
-
-- Uygulama iPhone ve Android için tasarlandı. Web hedefi desteklenmiyor (SQLite ve konum izni telefonda çalışacak şekilde yazıldı).
-- Veri kaynağı: [Open-Meteo](https://open-meteo.com) — ücretsiz, API anahtarı gerektirmez.
+Android ve iOS çıktıları Expo Go üzerinde cihaz doğrulamasından ayrıca geçirilebilir.

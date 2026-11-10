@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { Alert, FlatList, Platform, Pressable, RefreshControl, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import EmptyView from '../../components/EmptyView';
@@ -12,6 +12,7 @@ import { getErrorMessage } from '../../services/http';
 import { getCurrentSummaries } from '../../services/weather';
 import { City, CurrentSummary } from '../../types/weather';
 import { confirmRemoveFavorite } from '../../utils/confirm';
+import { usePreferences } from '../../hooks/usePreferences';
 import { formatTemp } from '../../utils/format';
 import { openCity } from '../../utils/navigation';
 import { getWeatherDescription, getWeatherIcon } from '../../utils/weatherCodes';
@@ -26,44 +27,66 @@ export default function FavoritesScreen() {
   const [dbError, setDbError] = useState<string | null>(null); // Veritabanı okunamadı
   const [weatherError, setWeatherError] = useState<string | null>(null); // Sıcaklıklar alınamadı
 
-  // Önce favorileri veritabanından okur, sonra sıcaklıklarını internetten getirir
+  const { unit } = usePreferences();
+  const request = useRef(0);
+  const focused = useRef(false);
+  const pendingRemovals = useRef(0);
+
   const load = useCallback(async () => {
+    if (!focused.current || pendingRemovals.current > 0) return;
+    const id = ++request.current;
     try {
       const cities = await getFavorites();
+      if (id !== request.current) return;
       setFavorites(cities);
       setDbError(null);
-
-      // Şehir listesi internetsiz de gösterilebilir; sıcaklık hatası ayrı ele alınır
       try {
-        setSummaries(await getCurrentSummaries(cities));
+        const next = await getCurrentSummaries(cities);
+        if (id !== request.current) return;
+        setSummaries(next);
         setWeatherError(null);
-      } catch (e) {
-        setWeatherError(getErrorMessage(e));
+      } catch (error) {
+        if (id === request.current) {
+          setSummaries({});
+          setWeatherError(getErrorMessage(error));
+        }
       }
     } catch {
-      setDbError('Favoriler okunamadı. Lütfen tekrar deneyin.');
+      if (id === request.current) setDbError('Favoriler okunamadı. Lütfen tekrar deneyin.');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (id === request.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
-  // useFocusEffect: bu sekmeye her dönüldüğünde liste yenilenir
-  // (örn. detay ekranında yeni favori eklendikten sonra)
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
+  useFocusEffect(useCallback(() => {
+    focused.current = true;
+    void load();
+    return () => {
+      focused.current = false;
+      request.current++;
+    };
+  }, [load]));
 
-  // Onay sorulduktan sonra şehri siler ve listeyi günceller
   function handleRemove(city: City) {
     confirmRemoveFavorite(city, async () => {
+      if (!focused.current) return;
+      pendingRemovals.current++;
+      request.current++;
       try {
         await removeFavorite(city.id);
-        setFavorites((list) => list.filter((item) => item.id !== city.id));
+        if (focused.current) setFavorites((list) => list.filter((item) => item.id !== city.id));
       } catch {
-        Alert.alert('Hata', 'Şehir silinemedi. Lütfen tekrar deneyin.');
+        if (focused.current) {
+          const message = 'Şehir silinemedi. Lütfen tekrar deneyin.';
+          if (Platform.OS === 'web') window.alert(message);
+          else Alert.alert('Hata', message);
+        }
+      } finally {
+        pendingRemovals.current--;
+        void load();
       }
     });
   }
@@ -115,40 +138,39 @@ export default function FavoritesScreen() {
                 <Text className="text-sm font-bold text-amber-900">Tekrar dene</Text>
               </Pressable>
             </View>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => {
           const summary = summaries[item.id]; // Henüz gelmediyse undefined
           return (
-            <Pressable
-              onPress={() => openCity(item)}
-              accessibilityRole="button"
-              className="mb-3 flex-row items-center rounded-2xl bg-white p-4 active:opacity-70"
-            >
-              <View className="flex-1">
-                <Text numberOfLines={1} className="text-lg font-semibold text-slate-800">
-                  {item.name}
-                </Text>
-                {/* Ülke ve (geldiyse) hava açıklaması: "Türkiye · Parçalı bulutlu" */}
-                <Text numberOfLines={1} className="text-sm text-slate-500">
-                  {[item.country, summary && getWeatherDescription(summary.weatherCode)]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-              </View>
+            <View className="mb-3 flex-row items-center rounded-2xl bg-white p-4 dark:bg-slate-900">
+              <Pressable onPress={() => openCity(item)} accessibilityRole="button"
+                className="flex-1 flex-row items-center active:opacity-70">
+                <View className="flex-1">
+                  <Text numberOfLines={1} className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+                    {item.name}
+                  </Text>
+                  {/* Ülke ve (geldiyse) hava açıklaması: "Türkiye · Parçalı bulutlu" */}
+                  <Text numberOfLines={1} className="text-sm text-slate-500 dark:text-slate-300">
+                    {[item.country, summary && getWeatherDescription(summary.weatherCode)]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Text>
+                </View>
 
-              {/* Anlık ikon ve sıcaklık (veri yoksa "--") */}
-              {summary && (
-                <MaterialCommunityIcons
-                  name={getWeatherIcon(summary.weatherCode, summary.isDay)}
-                  size={28}
-                  color="#0284c7"
-                />
-              )}
-              <Text className="ml-2 w-14 text-right text-2xl font-bold text-slate-800">
-                {summary ? formatTemp(summary.temperature) : '--'}
-              </Text>
+                {/* Anlık ikon ve sıcaklık (veri yoksa "--") */}
+                {summary && (
+                  <MaterialCommunityIcons
+                    name={getWeatherIcon(summary.weatherCode, summary.isDay)}
+                    size={28}
+                    color="#0284c7"
+                  />
+                )}
+                <Text className="ml-2 text-right text-xl font-bold text-slate-800 dark:text-slate-100">
+                  {summary ? formatTemp(summary.temperature, unit) : '—'}
+                </Text>
 
+              </Pressable>
               <Pressable
                 onPress={() => handleRemove(item)}
                 hitSlop={10}
@@ -158,7 +180,7 @@ export default function FavoritesScreen() {
               >
                 <MaterialCommunityIcons name="trash-can-outline" size={24} color="#ef4444" />
               </Pressable>
-            </Pressable>
+            </View>
           );
         }}
       />
@@ -166,8 +188,14 @@ export default function FavoritesScreen() {
   }
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-sky-50">
-      <Text className="px-4 py-3 text-2xl font-bold text-slate-800">Favoriler</Text>
+    <SafeAreaView edges={['top']} className="flex-1 bg-sky-50 dark:bg-slate-950">
+      <View className="flex-row items-center justify-between gap-2 px-4 py-3">
+        <Text className="text-2xl font-bold text-slate-800 dark:text-slate-100">Favoriler</Text>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/search')}
+          className="rounded-xl bg-sky-700 px-3 py-2">
+          <Text className="font-semibold text-white">Şehir ekle</Text>
+        </Pressable>
+      </View>
       {renderContent()}
     </SafeAreaView>
   );

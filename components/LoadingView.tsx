@@ -9,7 +9,7 @@ export default function LoadingView({ message = 'Yükleniyor...' }: Props) {
   return (
     <View className="flex-1 items-center justify-center p-6">
       <ActivityIndicator size="large" color="#0284c7" />
-      <Text className="mt-3 text-base text-slate-500">{message}</Text>
+      <Text className="mt-3 text-base text-slate-500 dark:text-slate-300">{message}</Text>
     </View>
   );
 }

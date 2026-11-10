@@ -9,24 +9,32 @@ async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync('weather.db');
 
   // id PRIMARY KEY olduğu için aynı şehir ikinci kez eklenemez
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS favorites (
-      id INTEGER PRIMARY KEY NOT NULL,
-      name TEXT NOT NULL,
-      country TEXT NOT NULL,
-      latitude REAL NOT NULL,
-      longitude REAL NOT NULL,
-      created_at INTEGER NOT NULL
-    );
-  `);
+  try {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS favorites (
+        id INTEGER PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        country TEXT NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+    `);
 
-  return db;
+    return db;
+  } catch (error) {
+    await db.closeAsync().catch(() => undefined);
+    throw error;
+  }
 }
 
 // Açık bağlantıyı döndürür (ilk çağrıda açar)
 export function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!databasePromise) {
-    databasePromise = openDatabase();
+    databasePromise = openDatabase().catch((error) => {
+      databasePromise = null;
+      throw error;
+    });
   }
   return databasePromise;
 }

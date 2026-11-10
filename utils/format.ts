@@ -1,6 +1,9 @@
-// Sayıları ekranda gösterilecek metne çeviren yardımcılar.
+export type TemperatureUnit = 'C' | 'F';
 
-// 17.6 -> "18°"
-export function formatTemp(value: number): string {
-  return `${Math.round(value)}°`;
+export function formatTemp(value: number, unit: TemperatureUnit): string {
+  return `${Math.round(unit === 'F' ? value * 9 / 5 + 32 : value)}°${unit}`;
+}
+
+export function formatMetric(value: number | null | undefined, suffix = ''): string {
+  return typeof value === 'number' && Number.isFinite(value) ? `${value}${suffix}` : '—';
 }

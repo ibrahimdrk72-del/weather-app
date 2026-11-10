@@ -15,7 +15,10 @@ export type CurrentWeather = {
   temperature: number; // °C
   feelsLike: number; // Hissedilen sıcaklık (°C)
   humidity: number; // Nem (%)
-  windSpeed: number; // Rüzgar hızı (km/s)
+  windSpeed: number; // km/sa
+  gusts?: number | null;
+  pressure?: number | null;
+  visibility?: number | null;
   weatherCode: number; // WMO hava durumu kodu
   isDay: boolean; // Gündüz mü?
 };
@@ -26,7 +29,7 @@ export type HourlyItem = {
   temperature: number;
   weatherCode: number;
   isDay: boolean;
-  precipitationProbability: number; // Yağış olasılığı (%)
+  precipitationProbability: number | null; // Yağış olasılığı (%)
 };
 
 // Günlük tahmindeki tek bir gün
@@ -35,7 +38,10 @@ export type DailyItem = {
   weatherCode: number;
   tempMax: number;
   tempMin: number;
-  precipitationProbability: number; // Gün içindeki en yüksek yağış olasılığı (%)
+  precipitationProbability: number | null; // Gün içindeki en yüksek yağış olasılığı (%)
+  uv?: number | null;
+  precipitation?: number | null;
+  maxWind?: number | null;
   sunrise: string; // Gün doğumu, örn. "2026-11-10T07:41"
   sunset: string; // Gün batımı
 };
