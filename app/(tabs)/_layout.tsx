@@ -10,7 +10,7 @@ export default function TabLayout() {
         options={{
           title: 'Hava Durumu',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="weather-partly-cloudy" color={color} size={size} />
+            <MaterialCommunityIcons name="weather-partly-cloudy" color={typeof color === 'number' ? undefined : color ?? undefined} size={size} />
           ),
         }}
       />
@@ -19,7 +19,7 @@ export default function TabLayout() {
         options={{
           title: 'Favoriler',
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="heart" color={color} size={size} />
+            <MaterialCommunityIcons name="heart" color={typeof color === 'number' ? undefined : color ?? undefined} size={size} />
           ),
         }}
       />

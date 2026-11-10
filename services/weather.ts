@@ -1,5 +1,5 @@
-import { City, CurrentSummary, WeatherData } from '../types/weather';
-import { fetchJson } from './http';
+import type { City, CurrentSummary, WeatherData } from '../types/weather';
+import { fetchJson } from './http.ts';
 
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 
@@ -14,6 +14,9 @@ type ForecastResponse = {
     relative_humidity_2m: number;
     wind_speed_10m: number;
     weather_code: number;
+    wind_gusts_10m?: number | null;
+    pressure_msl?: number | null;
+    visibility?: number | null;
     is_day: number; // 1 = gündüz, 0 = gece
   };
   hourly: {
@@ -29,6 +32,9 @@ type ForecastResponse = {
     temperature_2m_max: number[];
     temperature_2m_min: number[];
     precipitation_probability_max: (number | null)[];
+    uv_index_max?: (number | null)[];
+    precipitation_sum?: (number | null)[];
+    wind_speed_10m_max?: (number | null)[];
     sunrise: string[];
     sunset: string[];
   };
@@ -38,13 +44,16 @@ type ForecastResponse = {
 export async function getWeather(latitude: number, longitude: number): Promise<WeatherData> {
   const url =
     `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}` +
-    '&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day' +
+    '&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,pressure_msl,visibility,weather_code,is_day' +
     '&hourly=temperature_2m,weather_code,is_day,precipitation_probability' +
-    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset' +
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max,precipitation_sum,wind_speed_10m_max' +
     '&forecast_days=7' + // 7 günlük veri iste
-    '&timezone=auto'; // saatler şehrin kendi saat diliminde gelsin
+    '&wind_speed_unit=kmh&timezone=auto'; // saatler şehrin kendi saat diliminde gelsin
 
-  const data = await fetchJson<ForecastResponse>(url);
+  return transformForecast(await fetchJson<ForecastResponse>(url));
+}
+
+export function transformForecast(data: ForecastResponse): WeatherData {
 
   // Beklenen alanlar gelmediyse ekran çökmesin diye anlaşılır bir hata ver
   if (!data.current || !data.hourly?.time?.length || !data.daily?.time?.length) {
@@ -66,6 +75,9 @@ export async function getWeather(latitude: number, longitude: number): Promise<W
       feelsLike: data.current.apparent_temperature,
       humidity: data.current.relative_humidity_2m,
       windSpeed: data.current.wind_speed_10m,
+      gusts: data.current.wind_gusts_10m,
+      pressure: data.current.pressure_msl,
+      visibility: data.current.visibility,
       weatherCode: data.current.weather_code,
       isDay: data.current.is_day === 1,
     },
@@ -76,7 +88,7 @@ export async function getWeather(latitude: number, longitude: number): Promise<W
         temperature: data.hourly.temperature_2m[i],
         weatherCode: data.hourly.weather_code[i],
         isDay: data.hourly.is_day[i] === 1,
-        precipitationProbability: data.hourly.precipitation_probability[i] ?? 0,
+        precipitationProbability: data.hourly.precipitation_probability?.[i] ?? null,
       }))
       .slice(startIndex, startIndex + 24),
     daily: data.daily.time.map((date, i) => ({
@@ -84,7 +96,10 @@ export async function getWeather(latitude: number, longitude: number): Promise<W
       weatherCode: data.daily.weather_code[i],
       tempMax: data.daily.temperature_2m_max[i],
       tempMin: data.daily.temperature_2m_min[i],
-      precipitationProbability: data.daily.precipitation_probability_max[i] ?? 0,
+      precipitationProbability: data.daily.precipitation_probability_max?.[i] ?? null,
+      uv: data.daily.uv_index_max?.[i],
+      precipitation: data.daily.precipitation_sum?.[i],
+      maxWind: data.daily.wind_speed_10m_max?.[i],
       sunrise: data.daily.sunrise[i],
       sunset: data.daily.sunset[i],
     })),

@@ -1,6 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,12 +10,14 @@ import { useDebounce } from '../hooks/useDebounce';
 import { searchCities } from '../services/geocoding';
 import { getErrorMessage } from '../services/http';
 import { City } from '../types/weather';
+import { popularCities } from '../utils/cities';
 import { openCity } from '../utils/navigation';
 
 const MIN_LENGTH = 2; // En az kaç karakter yazılınca arama başlasın
 
 // Arama ekranı (modal): kullanıcı yazdıkça şehir önerileri gelir
 export default function SearchScreen() {
+  const selected = useRef(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<City[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,22 +62,15 @@ export default function SearchScreen() {
 
   // Şehre dokununca: modalı kapat ve o şehrin detay ekranını aç
   function selectCity(city: City) {
-    router.back();
-    openCity(city);
+    if (selected.current) return;
+    selected.current = true;
+    openCity(city, true);
   }
 
   // Liste dışındaki durumlar (bilgi, yükleniyor, hata) sabit yükseklikte bir alanda gösterilir.
   // Ekranın tam ortasına koysaydık açık klavyenin arkasında kalırlardı.
   function renderStatus() {
-    if (query.trim().length < MIN_LENGTH) {
-      return (
-        <EmptyView
-          icon="map-search-outline"
-          title="Şehir arayın"
-          message="Aramak için en az 2 harf yazın."
-        />
-      );
-    }
+    if (query.trim().length < MIN_LENGTH) return null;
     if (error) {
       return <ErrorView message={error} onRetry={() => setRetryCount((count) => count + 1)} />;
     }
@@ -104,7 +98,10 @@ export default function SearchScreen() {
     }
     return (
       <FlatList
-        data={results}
+        data={query.trim().length < MIN_LENGTH ? popularCities : results}
+        ListHeaderComponent={query.trim().length < MIN_LENGTH ? (
+          <Text className="px-4 py-2 font-semibold text-slate-800 dark:text-slate-100">Popüler şehirler</Text>
+        ) : undefined}
         keyExtractor={(item) => String(item.id)}
         keyboardShouldPersistTaps="handled" // Klavye açıkken de ilk dokunuş şehri seçsin
         keyboardDismissMode="on-drag" // Liste kaydırılınca klavye kapansın
@@ -112,13 +109,13 @@ export default function SearchScreen() {
           <Pressable
             onPress={() => selectCity(item)}
             accessibilityRole="button"
-            className="flex-row items-center border-b border-slate-100 px-4 py-3 active:bg-sky-50"
+            className="flex-row items-center border-b border-slate-100 dark:border-slate-700 px-4 py-3 active:bg-sky-50"
           >
             <MaterialCommunityIcons name="map-marker-outline" size={22} color="#0284c7" />
             <View className="ml-3 flex-1">
-              <Text className="text-base font-semibold text-slate-800">{item.name}</Text>
+              <Text className="text-base font-semibold text-slate-800 dark:text-slate-100">{item.name}</Text>
               {/* İl ve ülke; boş olanlar filtrelenir */}
-              <Text className="text-sm text-slate-500">
+              <Text className="text-sm text-slate-500 dark:text-slate-300">
                 {[item.admin1, item.country].filter(Boolean).join(', ')}
               </Text>
             </View>
@@ -130,9 +127,9 @@ export default function SearchScreen() {
   }
 
   return (
-    <SafeAreaView edges={['bottom']} className="flex-1 bg-white">
+    <SafeAreaView edges={['bottom']} className="flex-1 bg-white dark:bg-slate-900">
       {/* Arama kutusu */}
-      <View className="m-4 flex-row items-center rounded-2xl bg-slate-100 px-3">
+      <View className="m-4 flex-row items-center rounded-2xl bg-slate-100 dark:bg-slate-800 px-3">
         <MaterialCommunityIcons name="magnify" size={22} color="#64748b" />
         <TextInput
           value={query}
@@ -142,7 +139,7 @@ export default function SearchScreen() {
           autoFocus
           autoCorrect={false}
           returnKeyType="search"
-          className="ml-2 flex-1 py-3 text-base text-slate-800"
+          className="ml-2 flex-1 py-3 text-base text-slate-800 dark:text-slate-100"
         />
         {query.length > 0 && (
           <Pressable

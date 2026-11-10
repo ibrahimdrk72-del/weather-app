@@ -12,8 +12,8 @@ export default function EmptyView({ icon, title, message }: Props) {
   return (
     <View className="flex-1 items-center justify-center p-6">
       <MaterialCommunityIcons name={icon} size={56} color="#94a3b8" />
-      <Text className="mt-3 text-center text-lg font-semibold text-slate-700">{title}</Text>
-      {message && <Text className="mt-1 text-center text-base text-slate-500">{message}</Text>}
+      <Text className="mt-3 text-center text-lg font-semibold text-slate-700 dark:text-slate-200">{title}</Text>
+      {message && <Text className="mt-1 text-center text-base text-slate-500 dark:text-slate-300">{message}</Text>}
     </View>
   );
 }

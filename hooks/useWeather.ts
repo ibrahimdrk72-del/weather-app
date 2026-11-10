@@ -1,47 +1,77 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 
+import { read, remove, write } from '../db/storage';
+import { CachedForecast, parseCachedForecast } from '../services/cache';
 import { getErrorMessage } from '../services/http';
 import { getWeather } from '../services/weather';
-import { WeatherData } from '../types/weather';
 
-// Verilen koordinatın hava durumunu getirir ve yükleniyor / hata / veri durumlarını yönetir.
+type State = {
+  key: string;
+  forecast: CachedForecast | null;
+  loading: boolean;
+  refreshing: boolean;
+  error: string | null;
+};
+
 export function useWeather(latitude: number, longitude: number) {
-  const [data, setData] = useState<WeatherData | null>(null);
-  const [loading, setLoading] = useState(true); // İlk yükleme
-  const [refreshing, setRefreshing] = useState(false); // Aşağı çekerek yenileme
-  const [error, setError] = useState<string | null>(null);
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null); // Verinin en son alındığı an
+  const key = `weather:forecast:${latitude.toFixed(3)}:${longitude.toFixed(3)}`;
+  const [state, setState] = useState<State | null>(null);
+  const request = useRef(0);
+  const focused = useRef(false);
 
-  // useCallback: koordinat değişmedikçe aynı fonksiyon kullanılır
-  const fetchWeather = useCallback(async () => {
+  const load = useCallback(async (refreshing = false) => {
+    if (!focused.current) return;
+    const id = ++request.current;
+    setState((previous) => ({
+      key,
+      forecast: refreshing && previous?.key === key ? previous.forecast : null,
+      loading: !refreshing,
+      refreshing,
+      error: null,
+    }));
+
+    let forecast: CachedForecast | null = null;
+    let error: string | null = null;
     try {
-      const result = await getWeather(latitude, longitude);
-      setData(result);
-      setUpdatedAt(new Date());
-      setError(null);
-    } catch (e) {
-      setError(getErrorMessage(e));
+      const data = await getWeather(latitude, longitude);
+      if (id !== request.current) return;
+      forecast = { data, savedAt: Date.now() };
+      void write(key, JSON.stringify(forecast)).catch(() => undefined);
+    } catch (failure) {
+      if (id !== request.current) return;
+      error = getErrorMessage(failure);
+      try {
+        const raw = await read(key);
+        if (id !== request.current) return;
+        forecast = parseCachedForecast(raw, Date.now());
+        if (raw && !forecast) void remove(key).catch(() => undefined);
+      } catch {
+        // Storage is optional when retrieving live weather.
+      }
     }
-  }, [latitude, longitude]);
+    if (id === request.current) {
+      setState({ key, forecast, error, loading: false, refreshing: false });
+    }
+  }, [key, latitude, longitude]);
 
-  // İlk açılışta ve "Tekrar dene" butonunda: tam ekran yükleniyor göstergesi ile getir
-  const load = useCallback(async () => {
-    setLoading(true);
-    await fetchWeather();
-    setLoading(false);
-  }, [fetchWeather]);
+  useFocusEffect(useCallback(() => {
+    focused.current = true;
+    void load();
+    return () => {
+      focused.current = false;
+      request.current++;
+    };
+  }, [load]));
 
-  // Aşağı çekince: mevcut veri ekranda kalır, sadece üstte küçük gösterge döner
-  const refresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchWeather();
-    setRefreshing(false);
-  }, [fetchWeather]);
-
-  // Ekran açıldığında (veya koordinat değiştiğinde) veriyi getir
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  return { data, loading, refreshing, error, updatedAt, retry: load, refresh };
+  const current = state?.key === key ? state : null;
+  return {
+    data: current?.forecast?.data ?? null,
+    updatedAt: current?.forecast ? new Date(current.forecast.savedAt) : null,
+    loading: current?.loading ?? true,
+    refreshing: current?.refreshing ?? false,
+    error: current?.error ?? null,
+    retry: () => load(),
+    refresh: () => load(true),
+  };
 }

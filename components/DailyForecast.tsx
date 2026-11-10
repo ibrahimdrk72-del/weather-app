@@ -1,65 +1,46 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 
 import { DailyItem } from '../types/weather';
-import { getDayName } from '../utils/date';
-import { formatTemp } from '../utils/format';
-import { getWeatherIcon } from '../utils/weatherCodes';
+import { formatTime, getDayName } from '../utils/date';
+import { usePreferences } from '../hooks/usePreferences';
+import { formatMetric, formatTemp } from '../utils/format';
+import { getWeatherDescription, getWeatherIcon } from '../utils/weatherCodes';
 
-type Props = {
-  days: DailyItem[];
-};
-
-// Yağış olasılığı bu değerin altındaysa gösterilmez
-const MIN_RAIN_PERCENT = 20;
-
-// 7 günlük tahmin: gün adı, ikon, yağış olasılığı, en düşük / en yüksek sıcaklık ve aralık çubuğu
-export default function DailyForecast({ days }: Props) {
-  // Haftanın en soğuk ve en sıcak değeri: çubukların ortak ölçeği
-  const weekMin = Math.min(...days.map((day) => day.tempMin));
-  const weekMax = Math.max(...days.map((day) => day.tempMax));
-  const range = weekMax - weekMin || 1; // 0'a bölmeyi önle
+export default function DailyForecast({ days }: { days: DailyItem[] }) {
+  const { unit } = usePreferences();
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
-    <View className="mt-4 rounded-3xl bg-white p-4">
-      <Text className="mb-1 text-base font-semibold text-slate-800">7 Günlük Tahmin</Text>
+    <View className="mt-4 rounded-3xl bg-white p-4 dark:bg-slate-900">
+      <Text className="mb-1 text-base font-semibold text-slate-800 dark:text-slate-100">7 Günlük Tahmin</Text>
       {days.map((day, index) => {
-        // Çubuğun başlangıcı ve genişliği (haftalık aralığa göre yüzde olarak)
-        const left = ((day.tempMin - weekMin) / range) * 100;
-        const width = Math.max(((day.tempMax - day.tempMin) / range) * 100, 8);
-        const isLast = index === days.length - 1;
-
+        const open = expanded === day.date;
         return (
-          <View
-            key={day.date}
-            className={`flex-row items-center py-3 ${isLast ? '' : 'border-b border-slate-100'}`}
-          >
-            <Text numberOfLines={1} className="flex-1 text-base text-slate-700">
-              {getDayName(day.date, index)}
-            </Text>
-
-            {/* Yağış olasılığı (düşükse boş) */}
-            <Text className="w-9 text-right text-xs font-semibold text-sky-600">
-              {day.precipitationProbability >= MIN_RAIN_PERCENT ? `%${day.precipitationProbability}` : ''}
-            </Text>
-            <MaterialCommunityIcons
-              name={getWeatherIcon(day.weatherCode)}
-              size={24}
-              color="#0284c7"
-              style={{ marginHorizontal: 6 }}
-            />
-
-            {/* En düşük - çubuk - en yüksek */}
-            <Text className="w-8 text-right text-base text-slate-400">{formatTemp(day.tempMin)}</Text>
-            <View className="mx-2 h-1.5 w-14 overflow-hidden rounded-full bg-slate-100">
-              <View
-                className="h-1.5 rounded-full bg-sky-400"
-                style={{ marginLeft: `${Math.min(left, 92)}%`, width: `${width}%` }}
-              />
-            </View>
-            <Text className="w-8 text-base font-semibold text-slate-800">
-              {formatTemp(day.tempMax)}
-            </Text>
+          <View key={day.date} className="border-b border-slate-100 dark:border-slate-700">
+            <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }}
+              onPress={() => setExpanded(open ? null : day.date)} className="flex-row items-center gap-2 py-3">
+              <Text className="flex-1 text-slate-700 dark:text-slate-200">{getDayName(day.date, index)}</Text>
+              <MaterialCommunityIcons name={getWeatherIcon(day.weatherCode)} size={24} color="#0284c7" />
+              <Text className="text-slate-500 dark:text-slate-300">{formatTemp(day.tempMin, unit)}</Text>
+              <Text className="font-semibold text-slate-800 dark:text-slate-100">{formatTemp(day.tempMax, unit)}</Text>
+              <MaterialCommunityIcons name={open ? 'chevron-up' : 'chevron-down'} size={20} color="#64748b" />
+            </Pressable>
+            {open && (
+              <View className="gap-1 pb-3">
+                <Text className="font-semibold text-slate-800 dark:text-slate-100">{getWeatherDescription(day.weatherCode)}</Text>
+                <Text className="text-slate-700 dark:text-slate-200">
+                  Yağış {formatMetric(day.precipitation, ' mm')} · Olasılık {formatMetric(day.precipitationProbability, '%')}
+                </Text>
+                <Text className="text-slate-700 dark:text-slate-200">
+                  UV {formatMetric(day.uv)} · Rüzgâr {formatMetric(day.maxWind, ' km/sa')}
+                </Text>
+                <Text className="text-slate-700 dark:text-slate-200">
+                  Gündoğumu {formatTime(day.sunrise)} · Günbatımı {formatTime(day.sunset)}
+                </Text>
+              </View>
+            )}
           </View>
         );
       })}

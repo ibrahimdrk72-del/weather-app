@@ -6,17 +6,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Bulunduğunuz yerin hava durumunu gösterebilmek için konumunuza ihtiyacımız var. Konumunuz yalnızca hava durumu sorgusu için kullanılır ve hiçbir yere kaydedilmez."
+        "NSLocationWhenInUseUsageDescription": "Bulunduğunuz yerin hava durumunu gösterebilmek için konumunuza ihtiyacımız var. Koordinatlar tahmin sorgusunda kullanılır; son tahmin cihazınızda çevrimdışı kullanım için saklanır."
       }
     },
     "android": {
@@ -24,7 +18,6 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
@@ -41,10 +34,18 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Bulunduğunuz yerin hava durumunu gösterebilmek için konumunuza ihtiyacımız var. Konumunuz yalnızca hava durumu sorgusu için kullanılır ve hiçbir yere kaydedilmez."
+          "locationWhenInUsePermission": "Bulunduğunuz yerin hava durumunu gösterebilmek için konumunuza ihtiyacımız var. Koordinatlar tahmin sorgusunda kullanılır; son tahmin cihazınızda çevrimdışı kullanım için saklanır."
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
     ]
   }
 }
