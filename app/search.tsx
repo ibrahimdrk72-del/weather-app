@@ -11,6 +11,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { searchCities } from '../services/geocoding';
 import { getErrorMessage } from '../services/http';
 import { City } from '../types/weather';
+import { openCity } from '../utils/navigation';
 
 const MIN_LENGTH = 2; // En az kaç karakter yazılınca arama başlasın
 
@@ -59,18 +60,9 @@ export default function SearchScreen() {
   }, [debouncedQuery, retryCount]);
 
   // Şehre dokununca: modalı kapat ve o şehrin detay ekranını aç
-  function openCity(city: City) {
+  function selectCity(city: City) {
     router.back();
-    router.push({
-      pathname: '/city/[id]',
-      params: {
-        id: city.id,
-        name: city.name,
-        country: city.country,
-        latitude: city.latitude,
-        longitude: city.longitude,
-      },
-    });
+    openCity(city);
   }
 
   // Duruma göre arama kutusunun altında ne gösterileceğini seç
@@ -107,7 +99,7 @@ export default function SearchScreen() {
         keyboardShouldPersistTaps="handled" // Klavye açıkken de ilk dokunuş şehri seçsin
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => openCity(item)}
+            onPress={() => selectCity(item)}
             className="flex-row items-center border-b border-slate-100 px-4 py-3 active:bg-sky-50"
           >
             <MaterialCommunityIcons name="map-marker-outline" size={22} color="#0284c7" />
