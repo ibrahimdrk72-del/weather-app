@@ -26,8 +26,20 @@ export function formatLongDate(date: string): string {
   return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${DAY_NAMES[d.getDay()]}`;
 }
 
-// "2026-11-10T14:00" -> "14:00". Listenin ilk elemanı için "Şimdi" yazılır.
+// "2026-11-10T14:00" -> "14:00"
+export function formatTime(time: string): string {
+  return time.slice(11, 16);
+}
+
+// Saatlik listede kullanılır: ilk eleman için "Şimdi", diğerleri için "14:00" yazılır.
 export function formatHour(time: string, index: number): string {
   if (index === 0) return 'Şimdi';
-  return time.slice(11, 16);
+  return formatTime(time);
+}
+
+// Date nesnesi -> "14:05" (telefonun saatine göre). "Son güncelleme" yazısı için.
+export function formatClock(date: Date): string {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
 }

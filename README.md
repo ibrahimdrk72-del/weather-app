@@ -7,9 +7,11 @@ Kullanıcı bulunduğu konumun veya aradığı şehrin hava durumunu görür, se
 ## Özellikler
 
 - Konuma göre hava durumu (izin verilmezse İstanbul gösterilir)
-- Anlık hava: sıcaklık, hissedilen sıcaklık, açıklama ve ikon, nem, rüzgar hızı
-- Önümüzdeki 24 saatin saatlik tahmini (yatay kaydırılabilir)
-- 7 günlük tahmin
+- Anlık hava: sıcaklık, hissedilen sıcaklık, açıklama ve ikon, günün en yüksek / en düşük sıcaklığı
+- Ayrıntılar: nem, rüzgar hızı, gün doğumu ve gün batımı
+- Önümüzdeki 24 saatin saatlik tahmini ve yağış olasılığı (yatay kaydırılabilir)
+- 7 günlük tahmin: yağış olasılığı ve sıcaklık aralığı çubuğu
+- Gündüz açık mavi, gece koyu lacivert kart
 - Yazdıkça öneri getiren şehir arama
 - Favori şehirler (telefonda SQLite veritabanında saklanır)
 - Aşağı çekerek yenileme

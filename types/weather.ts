@@ -26,6 +26,7 @@ export type HourlyItem = {
   temperature: number;
   weatherCode: number;
   isDay: boolean;
+  precipitationProbability: number; // Yağış olasılığı (%)
 };
 
 // Günlük tahmindeki tek bir gün
@@ -34,6 +35,9 @@ export type DailyItem = {
   weatherCode: number;
   tempMax: number;
   tempMin: number;
+  precipitationProbability: number; // Gün içindeki en yüksek yağış olasılığı (%)
+  sunrise: string; // Gün doğumu, örn. "2026-11-10T07:41"
+  sunset: string; // Gün batımı
 };
 
 // Bir konumun ekranda gösterilen bütün hava durumu verisi

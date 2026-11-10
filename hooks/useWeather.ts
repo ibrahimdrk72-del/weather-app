@@ -10,12 +10,14 @@ export function useWeather(latitude: number, longitude: number) {
   const [loading, setLoading] = useState(true); // İlk yükleme
   const [refreshing, setRefreshing] = useState(false); // Aşağı çekerek yenileme
   const [error, setError] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null); // Verinin en son alındığı an
 
   // useCallback: koordinat değişmedikçe aynı fonksiyon kullanılır
   const fetchWeather = useCallback(async () => {
     try {
       const result = await getWeather(latitude, longitude);
       setData(result);
+      setUpdatedAt(new Date());
       setError(null);
     } catch (e) {
       setError(getErrorMessage(e));
@@ -41,5 +43,5 @@ export function useWeather(latitude: number, longitude: number) {
     load();
   }, [load]);
 
-  return { data, loading, refreshing, error, retry: load, refresh };
+  return { data, loading, refreshing, error, updatedAt, retry: load, refresh };
 }

@@ -21,12 +21,16 @@ type ForecastResponse = {
     temperature_2m: number[];
     weather_code: number[];
     is_day: number[];
+    precipitation_probability: (number | null)[]; // Bazı saatlerde veri olmayabilir (null)
   };
   daily: {
     time: string[];
     weather_code: number[];
     temperature_2m_max: number[];
     temperature_2m_min: number[];
+    precipitation_probability_max: (number | null)[];
+    sunrise: string[];
+    sunset: string[];
   };
 };
 
@@ -35,8 +39,8 @@ export async function getWeather(latitude: number, longitude: number): Promise<W
   const url =
     `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}` +
     '&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day' +
-    '&hourly=temperature_2m,weather_code,is_day' +
-    '&daily=weather_code,temperature_2m_max,temperature_2m_min' +
+    '&hourly=temperature_2m,weather_code,is_day,precipitation_probability' +
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset' +
     '&forecast_days=7' + // 7 günlük veri iste
     '&timezone=auto'; // saatler şehrin kendi saat diliminde gelsin
 
@@ -67,6 +71,7 @@ export async function getWeather(latitude: number, longitude: number): Promise<W
         temperature: data.hourly.temperature_2m[i],
         weatherCode: data.hourly.weather_code[i],
         isDay: data.hourly.is_day[i] === 1,
+        precipitationProbability: data.hourly.precipitation_probability[i] ?? 0,
       }))
       .slice(startIndex, startIndex + 24),
     daily: data.daily.time.map((date, i) => ({
@@ -74,6 +79,9 @@ export async function getWeather(latitude: number, longitude: number): Promise<W
       weatherCode: data.daily.weather_code[i],
       tempMax: data.daily.temperature_2m_max[i],
       tempMin: data.daily.temperature_2m_min[i],
+      precipitationProbability: data.daily.precipitation_probability_max[i] ?? 0,
+      sunrise: data.daily.sunrise[i],
+      sunset: data.daily.sunset[i],
     })),
   };
 }

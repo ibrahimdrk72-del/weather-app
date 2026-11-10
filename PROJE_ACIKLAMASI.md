@@ -125,9 +125,10 @@ weather-app/
 │
 ├── components/                 TEKRAR KULLANILAN BİLEŞENLER
 │   ├── WeatherView.tsx         Hava durumu içeriğinin tamamı (ana ekran + detay ortak kullanır)
-│   ├── CurrentWeatherCard.tsx  Anlık hava kartı (mavi kart)
-│   ├── HourlyForecast.tsx      24 saatlik yatay liste
-│   ├── DailyForecast.tsx       7 günlük liste
+│   ├── CurrentWeatherCard.tsx  Anlık hava kartı (gündüz mavi, gece lacivert)
+│   ├── WeatherDetails.tsx      Ayrıntı kutuları: nem, rüzgar, gün doğumu, gün batımı
+│   ├── HourlyForecast.tsx      24 saatlik yatay liste (yağış olasılığı ile)
+│   ├── DailyForecast.tsx       7 günlük liste (sıcaklık aralığı çubuğu ile)
 │   ├── LoadingView.tsx         Yükleniyor durumu
 │   ├── ErrorView.tsx           Hata durumu + "Tekrar dene"
 │   ├── EmptyView.tsx           Boş durum (ikon + mesaj)
@@ -152,7 +153,7 @@ weather-app/
 │
 ├── utils/                      YARDIMCILAR
 │   ├── weatherCodes.ts         WMO kodu → Türkçe açıklama + ikon
-│   ├── date.ts                 Türkçe gün adı, tarih ve saat biçimlendirme
+│   ├── date.ts                 Türkçe gün adı, tarih ve saat biçimlendirme (formatTime, formatClock...)
 │   ├── format.ts               Sıcaklık biçimlendirme (17.6 → "18°")
 │   ├── navigation.ts           Şehir detay ekranını açan ortak fonksiyon
 │   └── confirm.ts              "Favorilerden çıkarılsın mı?" onay penceresi
@@ -180,7 +181,13 @@ weather-app/
 
 **`app/(tabs)/favorites.tsx`** — Favorileri veritabanından okur, sonra hepsinin sıcaklığını **tek istekle** getirir. `useFocusEffect` sayesinde sekmeye her dönüldüğünde liste yenilenir.
 
-**`components/WeatherView.tsx`** — Projenin "kod tekrarını önleyen" ana parçası. `useWeather` hook'unu çağırır, duruma göre `LoadingView`, `ErrorView` veya kartları gösterir. Aşağı çekerek yenileme (`RefreshControl`) de buradadır.
+**`components/WeatherView.tsx`** — Projenin "kod tekrarını önleyen" ana parçası. `useWeather` hook'unu çağırır, duruma göre `LoadingView`, `ErrorView` veya kartları gösterir. Aşağı çekerek yenileme (`RefreshControl`) ve en alttaki "Son güncelleme" yazısı da buradadır.
+
+**`components/CurrentWeatherCard.tsx`** — Büyük kart. `current.isDay` değerine göre rengini seçer: gündüz `bg-sky-500`, gece `bg-indigo-950`. Günün en yüksek/en düşük sıcaklığını günlük verinin ilk elemanından (`today`) alır.
+
+**`components/WeatherDetails.tsx`** — 2 x 2 dizilmiş dört küçük kutu. Kutunun kendisi aynı dosyadaki `DetailTile` bileşenidir; yeni bir bilgi eklemek tek satırdır.
+
+**`components/DailyForecast.tsx`** — Her günün yanında bir **sıcaklık aralığı çubuğu** çizer. Önce haftanın en düşük (`weekMin`) ve en yüksek (`weekMax`) sıcaklığını bulur; her günün çubuğunun başlangıcı ve genişliği bu aralığa göre **yüzde** olarak hesaplanır. Böylece sıcak günlerin çubuğu sağda, soğuk günlerinki solda durur.
 
 **`services/http.ts`** — `fetchJson(url)`: `AbortController` ile 10 saniyelik zaman aşımı uygular; internet yoksa, süre dolarsa veya sunucu hata kodu dönerse anlaşılır Türkçe bir `Error` fırlatır.
 
@@ -275,8 +282,8 @@ Nasıl kullanıyoruz: `results` dizisindeki her elemandan `id`, `name`, `country
 https://api.open-meteo.com/v1/forecast
   ?latitude=38.41&longitude=27.14
   &current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day
-  &hourly=temperature_2m,weather_code,is_day
-  &daily=weather_code,temperature_2m_max,temperature_2m_min
+  &hourly=temperature_2m,weather_code,is_day,precipitation_probability
+  &daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset
   &forecast_days=7
   &timezone=auto
 ```
@@ -285,8 +292,8 @@ https://api.open-meteo.com/v1/forecast
 | --- | --- |
 | `latitude`, `longitude` | Hangi konum |
 | `current=...` | Anlık değerler: sıcaklık, hissedilen, nem, rüzgar, hava kodu, gündüz mü |
-| `hourly=...` | Saatlik değerler: sıcaklık, hava kodu, gündüz mü |
-| `daily=...` | Günlük değerler: hava kodu, en yüksek, en düşük sıcaklık |
+| `hourly=...` | Saatlik değerler: sıcaklık, hava kodu, gündüz mü, yağış olasılığı |
+| `daily=...` | Günlük değerler: hava kodu, en yüksek / en düşük sıcaklık, en yüksek yağış olasılığı, gün doğumu, gün batımı |
 | `forecast_days=7` | 7 günlük veri |
 | `timezone=auto` | Saatler o şehrin yerel saatiyle gelsin |
 
@@ -309,13 +316,17 @@ Gelen cevap (kısaltılmış):
     "time": ["2026-11-10T00:00", "2026-11-10T01:00", "..."],
     "temperature_2m": [11.2, 10.9, "..."],
     "weather_code": [0, 1, "..."],
-    "is_day": [0, 0, "..."]
+    "is_day": [0, 0, "..."],
+    "precipitation_probability": [0, 5, "..."]
   },
   "daily": {
     "time": ["2026-11-10", "2026-11-11", "..."],
     "weather_code": [2, 61, "..."],
     "temperature_2m_max": [18.1, 16.4, "..."],
-    "temperature_2m_min": [11.0, 10.2, "..."]
+    "temperature_2m_min": [11.0, 10.2, "..."],
+    "precipitation_probability_max": [10, 80, "..."],
+    "sunrise": ["2026-11-10T07:41", "..."],
+    "sunset": ["2026-11-10T17:52", "..."]
   }
 }
 ```
@@ -323,8 +334,9 @@ Gelen cevap (kısaltılmış):
 Nasıl kullanıyoruz (`getWeather` fonksiyonu):
 
 - **`current`** → doğrudan `CurrentWeather` nesnesine çevrilir (`temperature_2m` → `temperature` gibi daha okunaklı adlar verilir, `is_day: 1` → `isDay: true` yapılır).
-- **`hourly`** → Open-Meteo veriyi **paralel diziler** halinde gönderir: `time[3]`, `temperature_2m[3]` ve `weather_code[3]` aynı saate aittir. `map` ile bunları `{ time, temperature, weatherCode, isDay }` nesnelerine çeviriyoruz. Saatlik veri günün 00:00'ından başladığı için, `current.time`'ın saatine denk gelen kaydı buluyor (`findIndex`) ve oradan itibaren **24 tanesini** alıyoruz (`slice`).
-- **`daily`** → Aynı şekilde `{ date, weatherCode, tempMax, tempMin }` nesnelerine çevrilir (7 eleman).
+- **`hourly`** → Open-Meteo veriyi **paralel diziler** halinde gönderir: `time[3]`, `temperature_2m[3]` ve `weather_code[3]` aynı saate aittir. `map` ile bunları `{ time, temperature, weatherCode, isDay, precipitationProbability }` nesnelerine çeviriyoruz. Saatlik veri günün 00:00'ından başladığı için, `current.time`'ın saatine denk gelen kaydı buluyor (`findIndex`) ve oradan itibaren **24 tanesini** alıyoruz (`slice`).
+- **`daily`** → Aynı şekilde `{ date, weatherCode, tempMax, tempMin, precipitationProbability, sunrise, sunset }` nesnelerine çevrilir (7 eleman). İlk eleman bugündür; gün doğumu/batımı ve günün en yüksek/en düşük sıcaklığı buradan okunur.
+- **Yağış olasılığı** bazı saatlerde `null` gelebilir; `?? 0` ile 0 kabul ediyoruz. Ekranda yalnızca %20 ve üzeri gösterilir (sade görünsün diye).
 - **`weather_code`** → `utils/weatherCodes.ts` ile Türkçe açıklamaya ve ikona çevrilir (örn. `2` → "Parçalı bulutlu").
 
 ### 6.3 Favoriler için toplu istek (`getCurrentSummaries`)
@@ -353,7 +365,7 @@ Birden fazla konum gönderilince cevap bir **dizi** olur (gönderdiğimiz sıray
 8. **`fetchJson`** (services/http.ts) 10 saniyelik zamanlayıcıyı kurar, `fetch` ile isteği atar, cevabı JSON'a çevirir.
 9. **`getWeather`** ham JSON'u `WeatherData` tipine dönüştürür (`current`, 24 saatlik `hourly`, 7 günlük `daily`) ve döndürür.
 10. **`useWeather`** `setData(result)` ve `setLoading(false)` yapar → `WeatherView` yeniden çizilir.
-11. **Ekranda sıcaklık görünür.** `WeatherView` üç bileşeni çizer: `CurrentWeatherCard` (sıcaklık, açıklama, nem, rüzgar), `HourlyForecast`, `DailyForecast`. Bu bileşenler `utils/` fonksiyonlarıyla kodu açıklamaya/ikona, tarihi Türkçe gün adına çevirir.
+11. **Ekranda sıcaklık görünür.** `WeatherView` dört bileşeni çizer: `CurrentWeatherCard` (sıcaklık, açıklama, en yüksek/en düşük), `WeatherDetails` (nem, rüzgar, gün doğumu/batımı), `HourlyForecast`, `DailyForecast`. Bu bileşenler `utils/` fonksiyonlarıyla kodu açıklamaya/ikona, tarihi Türkçe gün adına çevirir.
 
 **Hata olursa** (8. adımda internet yoksa): `fetchJson` Türkçe mesajlı bir hata fırlatır → `useWeather` bunu yakalayıp `setError(mesaj)` yapar → `WeatherView`, `ErrorView`'ü gösterir → "Tekrar dene" butonu `load()`'u yeniden çağırır.
 
@@ -656,11 +668,19 @@ Veri şekilleri `types/weather.ts`'de tanımlı. Örneğin `current.temprature` 
 Dört dosya, katman sırasıyla:
 1. `services/weather.ts`: URL'deki `current=` listesine `uv_index` ekle, `ForecastResponse` tipine `uv_index: number` ekle, dönüşümde `uvIndex: data.current.uv_index` yaz.
 2. `types/weather.ts`: `CurrentWeather` tipine `uvIndex: number` ekle.
-3. `components/CurrentWeatherCard.tsx`: Nem ve rüzgarın yanına üçüncü bir kutu ekle.
-4. (Gerekirse) ikon için `MaterialCommunityIcons`'tan `white-balance-sunny` gibi bir ad seç.
+3. `components/WeatherDetails.tsx`: Bir `<DetailTile ... />` satırı daha ekle (ikon olarak `MaterialCommunityIcons`'tan `white-balance-sunny` gibi bir ad seç).
 Ekran dosyalarına (`app/`) dokunmaya gerek yok; hem ana ekran hem detay ekranı aynı kartı kullandığı için ikisinde de görünür.
 
-**40. Uygulamayı Android'de de çalıştırabilir misin?**
+**40. 7 günlük listedeki renkli çubuk nasıl çiziliyor?**
+`DailyForecast` önce haftanın en düşük ve en yüksek sıcaklığını bulur (`Math.min` / `Math.max`). Her gün için çubuğun başlangıcı `(günMin - haftaMin) / aralık`, genişliği `(günMax - günMin) / aralık` oranıyla yüzde olarak hesaplanır ve iç `View`'e `style` ile verilir. Gri arka plan haftalık aralığı, mavi kısım o günün aralığını gösterir.
+
+**41. Kart gece neden farklı renkte, bunu nasıl anlıyorsun?**
+API `is_day` alanını gönderiyor (1 = gündüz, 0 = gece). Servis bunu `isDay: true/false` yapıyor. `CurrentWeatherCard` buna göre `bg-sky-500` veya `bg-indigo-950` sınıfını seçiyor; ikon da `getWeatherIcon(kod, isDay)` ile gece ikonuna dönüyor.
+
+**42. "Son güncelleme" saati nereden geliyor?**
+`useWeather` hook'u veri başarıyla geldiğinde `setUpdatedAt(new Date())` yapıyor. `WeatherView` bunu `formatClock` ile "14:05" biçiminde gösteriyor. Aşağı çekip yenileyince saat güncellenir.
+
+**43. Uygulamayı Android'de de çalıştırabilir misin?**
 Evet. Kod platforma özel bir şey içermiyor; Android'de Expo Go ile aynı QR kod okutularak açılır. Android konum izinleri `app.json`'da tanımlı.
 
 ---
@@ -712,16 +732,16 @@ Aynı dosyadaki `"Aramak için en az 2 harf yazın."` metnini de `3` yap. (Debou
 
 ```tsx
 // Eski
-<View className="items-center rounded-3xl bg-sky-500 p-6">
-// Yeni
-<View className="items-center rounded-3xl bg-indigo-500 p-6">
+const cardColor = current.isDay ? 'bg-sky-500' : 'bg-indigo-950';
+// Yeni (gündüz kartı turuncu)
+const cardColor = current.isDay ? 'bg-orange-500' : 'bg-indigo-950';
 ```
 
-Aynı dosyada `text-sky-100` ve `border-sky-400` sınıflarını da `text-indigo-100` ve `border-indigo-400` yaparsan renkler uyumlu olur.
+Bir alt satırdaki `softText` içinde `text-sky-100` yerine `text-orange-100` yazarsan soluk yazılar da uyumlu olur. Not: Tailwind sınıf adları kodda **tam metin** olarak yazılmalıdır (`'bg-' + renk` gibi birleştirme çalışmaz), çünkü Tailwind dosyaları tararken sadece tam yazılmış sınıfları bulur.
 
-### 5. Anlık karta yeni bir bilgi ekle (örn. UV indeksi)
+### 5. Ayrıntı kutularına yeni bir bilgi ekle (örn. UV indeksi)
 
-**Dosyalar:** `services/weather.ts`, `types/weather.ts`, `components/CurrentWeatherCard.tsx`
+**Dosyalar:** `services/weather.ts`, `types/weather.ts`, `components/WeatherDetails.tsx`
 
 `services/weather.ts`:
 
@@ -742,15 +762,13 @@ uvIndex: data.current.uv_index,
 uvIndex: number; // UV indeksi
 ```
 
-`components/CurrentWeatherCard.tsx` → rüzgar kutusunun (`</View>`) hemen altına:
+`components/WeatherDetails.tsx` → "Gün batımı" satırının hemen altına:
 
 ```tsx
-<View className="items-center">
-  <MaterialCommunityIcons name="white-balance-sunny" size={24} color="white" />
-  <Text className="mt-1 text-base font-semibold text-white">{Math.round(current.uvIndex)}</Text>
-  <Text className="text-xs text-sky-100">UV</Text>
-</View>
+<DetailTile icon="white-balance-sunny" label="UV indeksi" value={String(Math.round(current.uvIndex))} />
 ```
+
+Kutular satıra ikişer dizildiği için beşinci kutu yeni bir satırda solda görünür.
 
 ### Ek küçük fikirler
 
@@ -758,4 +776,5 @@ uvIndex: number; // UV indeksi
 - **Zaman aşımını 10 yerine 5 saniye yap:** `services/http.ts` içinde `TIMEOUT_MS = 10000` → `5000`.
 - **Tab adını değiştir:** `app/(tabs)/_layout.tsx` içinde `title: 'Favoriler'` → `title: 'Şehirlerim'`.
 - **Favorileri alfabetik sırala:** `db/favorites.ts` içinde `ORDER BY created_at ASC` → `ORDER BY name ASC`.
-- **Rüzgarı m/s göster:** `services/weather.ts` URL'ine `'&wind_speed_unit=ms'` ekle ve `CurrentWeatherCard.tsx` içinde `km/s` yazısını `m/s` yap.
+- **Rüzgarı m/s göster:** `services/weather.ts` URL'ine `'&wind_speed_unit=ms'` ekle ve `WeatherDetails.tsx` içinde `km/s` yazısını `m/s` yap.
+- **Yağış olasılığı eşiğini değiştir:** `HourlyForecast.tsx` ve `DailyForecast.tsx` içindeki `MIN_RAIN_PERCENT = 20` değerini değiştir (0 yaparsan hep görünür).

@@ -14,7 +14,7 @@ import { City, CurrentSummary } from '../../types/weather';
 import { confirmRemoveFavorite } from '../../utils/confirm';
 import { formatTemp } from '../../utils/format';
 import { openCity } from '../../utils/navigation';
-import { getWeatherIcon } from '../../utils/weatherCodes';
+import { getWeatherDescription, getWeatherIcon } from '../../utils/weatherCodes';
 
 // Favoriler ekranı: kayıtlı şehirler ve anlık sıcaklıkları
 export default function FavoritesScreen() {
@@ -122,7 +122,12 @@ export default function FavoritesScreen() {
                 <Text numberOfLines={1} className="text-lg font-semibold text-slate-800">
                   {item.name}
                 </Text>
-                {item.country !== '' && <Text className="text-sm text-slate-500">{item.country}</Text>}
+                {/* Ülke ve (geldiyse) hava açıklaması: "Türkiye · Parçalı bulutlu" */}
+                <Text numberOfLines={1} className="text-sm text-slate-500">
+                  {[item.country, summary && getWeatherDescription(summary.weatherCode)]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
               </View>
 
               {/* Anlık ikon ve sıcaklık (veri yoksa "--") */}
